@@ -4,15 +4,13 @@ import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 import { AppModule } from './app.module';
-import { HEALTH_CHECK_V1_PACKAGE_NAME } from './generated-types/health-check';
 import { GrpcExceptionFilter } from './utils/filters/grpc-exception.filter';
+import { HEALTH_CHECK_V1_PACKAGE_NAME } from './generated-types/health-check';
+import { MEDIA_V1_PACKAGE_NAME } from './generated-types/media';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger:
-      process.env.NODE_ENV === 'production'
-        ? ['error']
-        : ['log', 'debug', 'warn', 'error', 'verbose'],
+    logger: process.env.NODE_ENV === 'production' ? ['error'] : ['log', 'debug', 'warn', 'error', 'verbose'],
   });
 
   const logger = new Logger('Main');
@@ -26,8 +24,8 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
-      package: [HEALTH_CHECK_V1_PACKAGE_NAME],
-      protoPath: ['proto/health-check.proto'],
+      package: [HEALTH_CHECK_V1_PACKAGE_NAME, MEDIA_V1_PACKAGE_NAME],
+      protoPath: ['proto/health-check.proto', 'proto/media.proto'],
       url,
     },
   });

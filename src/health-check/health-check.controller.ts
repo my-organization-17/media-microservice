@@ -1,11 +1,9 @@
 import { Controller, Logger } from '@nestjs/common';
-import {
-  HEALTH_CHECK_SERVICE_NAME,
-  type HealthCheckResponse,
-} from 'src/generated-types/health-check';
 import { GrpcMethod } from '@nestjs/microservices';
 
-@Controller('health-check')
+import { HEALTH_CHECK_SERVICE_NAME, type HealthCheckResponse } from 'src/generated-types/health-check';
+
+@Controller()
 export class HealthCheckController {
   protected readonly logger = new Logger(HealthCheckController.name);
 

@@ -1,98 +1,140 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Media Microservice
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A dedicated microservice for managing media files (user avatars) in the CoffeeDoor microservices ecosystem. Built with NestJS and gRPC for efficient inter-service communication.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- **Avatar Upload** - Upload user avatars with automatic image processing
+- **Image Processing** - Automatic conversion to WebP format and resizing to 200x200 pixels
+- **Signed URLs** - Generate secure, time-limited URLs for accessing images
+- **Avatar Deletion** - Remove avatar files from storage
+- **Health Checks** - Built-in health check endpoint for orchestration
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Technology Stack
 
-## Project setup
+- **Framework:** NestJS v11
+- **Runtime:** Node.js 24 (Alpine)
+- **Communication:** gRPC
+- **Storage:** AWS S3
+- **Image Processing:** Sharp
+- **Language:** TypeScript
 
-```bash
-$ npm install
+## gRPC Endpoints
+
+### MediaService
+
+| Method | Request | Response | Description |
+|--------|---------|----------|-------------|
+| `GetImageUrl` | `FileKey { file_key }` | `FileUrl { file_url }` | Generate a signed URL (1 hour expiry) |
+| `UploadAvatar` | `{ id, file }` | `FileUrl { file_url }` | Upload and process avatar |
+| `DeleteAvatar` | `FileKey { file_key }` | `{ success, message }` | Delete avatar from S3 |
+
+### HealthCheckService
+
+| Method | Request | Response | Description |
+|--------|---------|----------|-------------|
+| `CheckAppHealth` | `Empty` | `{ serving, message }` | Service health status |
+
+## Environment Variables
+
+Create a `.env.local` file based on `.env.example`:
+
+```env
+# Deployment Environment
+NODE_ENV=development
+
+# gRPC Connection
+TRANSPORT_URL=0.0.0.0:5003
+HTTP_PORT=9103
+
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID=<your-access-key>
+AWS_SECRET_ACCESS_KEY=<your-secret-key>
+AWS_REGION=eu-north-1
+S3_BUCKET_NAME=<your-bucket-name>
 ```
 
-## Compile and run the project
+## Project Setup
 
 ```bash
-# development
-$ npm run start
+# Install dependencies
+npm install
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Generate gRPC types from proto files
+npm run proto:generate
 ```
 
-## Run tests
+## Running the Service
 
 ```bash
-# unit tests
-$ npm run test
+# Development mode
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
+# Production mode
+npm run start:prod
 
-# test coverage
-$ npm run test:cov
+# Debug mode
+npm run start:debug
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Docker Deployment
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Build and run with Docker Compose
+docker-compose up --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The service will be available at:
+- **gRPC:** `0.0.0.0:5003`
+- **HTTP:** `0.0.0.0:9103`
 
-## Resources
+## Project Structure
 
-Check out a few resources that may come in handy when working with NestJS:
+```
+src/
+├── app.module.ts           # Root module
+├── main.ts                 # Application entry point
+├── health-check/           # Health check module
+│   ├── health-check.controller.ts
+│   └── health-check.module.ts
+├── media/                  # Core media functionality
+│   ├── media.controller.ts
+│   ├── media.service.ts
+│   ├── media.module.ts
+│   └── tests/              # Unit tests
+│       ├── media.controller.spec.ts
+│       └── media.service.spec.ts
+├── utils/                  # Utilities
+│   ├── env.dto.ts
+│   ├── errors/
+│   ├── filters/
+│   └── validators/
+└── generated-types/        # gRPC proto-generated types
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Testing
 
-## Support
+```bash
+# Unit tests
+npm run test
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# E2E tests
+npm run test:e2e
 
-## Stay in touch
+# Test coverage
+npm run test:cov
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Proto Files
+
+The service uses protocol buffers for gRPC communication:
+- `proto/media.proto` - MediaService interface
+- `proto/health-check.proto` - HealthCheckService interface
+
+## Network
+
+This service connects to the `coffeedoor-network` Docker network for inter-service communication with other microservices in the ecosystem.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is proprietary software.

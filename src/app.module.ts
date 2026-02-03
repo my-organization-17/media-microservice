@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { AppService } from './app.service';
 import { validateEnv } from './utils/validators/env-validator';
 import { EnvironmentVariables } from './utils/env.dto';
 import { HealthCheckModule } from './health-check/health-check.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -14,8 +14,9 @@ import { HealthCheckModule } from './health-check/health-check.module';
       validate: (config) => validateEnv(config, EnvironmentVariables),
     }),
     HealthCheckModule,
+    MediaModule,
   ],
   controllers: [],
-  providers: [AppService],
+  providers: [],
 })
 export class AppModule {}
