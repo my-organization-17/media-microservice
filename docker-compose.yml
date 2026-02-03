@@ -1,0 +1,17 @@
+services:
+  media-app:
+    container_name: media-app
+    image: media-microservice:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5003:5003
+    env_file:
+      - ./.env.docker
+    networks:
+      - coffeedoor-network
+
+networks:
+  coffeedoor-network:
+      external: true
