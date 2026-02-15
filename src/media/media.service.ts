@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 
@@ -25,7 +31,14 @@ export class MediaService {
     this.bucketName = this.configService.getOrThrow<string>('S3_BUCKET_NAME');
   }
 
+  private validateFileKey(fileKey: string): void {
+    if (!fileKey || fileKey.includes('..') || fileKey.startsWith('/')) {
+      throw AppError.badRequest('Invalid file key');
+    }
+  }
+
   async getImageUrl(fileKey: string): Promise<string> {
+    this.validateFileKey(fileKey);
     try {
       const params = {
         Bucket: this.bucketName,
@@ -58,11 +71,12 @@ export class MediaService {
         Key: avatarPath,
         Body: fileBuffer,
         ContentType: 'image/webp',
+        ContentDisposition: 'inline',
       };
       const command = new PutObjectCommand(params);
       await this.s3Client.send(command);
 
-      return fileName;
+      return avatarPath;
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : error);
       if (error instanceof AppError) throw error;
@@ -71,13 +85,20 @@ export class MediaService {
   }
 
   async deleteImage(fileKey: string): Promise<StatusResponse> {
+    this.validateFileKey(fileKey);
     const params = {
       Bucket: this.bucketName,
       Key: fileKey,
     };
-    const command = new DeleteObjectCommand(params);
+
     try {
-      await this.s3Client.send(command);
+      await this.s3Client.send(new HeadObjectCommand(params));
+    } catch {
+      throw AppError.notFound('Image not found');
+    }
+
+    try {
+      await this.s3Client.send(new DeleteObjectCommand(params));
       return {
         success: true,
         message: 'Image deleted successfully',

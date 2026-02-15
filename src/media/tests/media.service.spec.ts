@@ -24,6 +24,10 @@ jest.mock('@aws-sdk/client-s3', () => ({
     ...params,
     type: 'DeleteObjectCommand',
   })),
+  HeadObjectCommand: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
+    ...params,
+    type: 'HeadObjectCommand',
+  })),
 }));
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
@@ -121,7 +125,7 @@ describe('MediaService', () => {
 
       const result = await service.uploadAvatar(uploadRequest);
 
-      expect(result).toBe('user-123-profile.webp');
+      expect(result).toBe('avatar/user-123-profile.webp');
       expect(mockSharpInstance.webp).toHaveBeenCalled();
       expect(mockSharpInstance.resize).toHaveBeenCalledWith(200);
       expect(mockSharpInstance.toBuffer).toHaveBeenCalled();
@@ -184,18 +188,50 @@ describe('MediaService', () => {
         expect.objectContaining({
           Bucket: 'test-bucket',
           Key: fileKey,
+          type: 'HeadObjectCommand',
+        }),
+      );
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Bucket: 'test-bucket',
+          Key: fileKey,
           type: 'DeleteObjectCommand',
         }),
       );
     });
 
-    it('should throw AppError when S3 delete fails', async () => {
-      mockSend.mockRejectedValue(new Error('Delete failed'));
+    it('should throw AppError.notFound when image does not exist', async () => {
+      mockSend.mockRejectedValue(new Error('NotFound'));
 
       await expect(service.deleteImage(fileKey)).rejects.toThrow(AppError);
       await expect(service.deleteImage(fileKey)).rejects.toMatchObject({
         error: expect.objectContaining({
+          message: 'Image not found',
+        }),
+      });
+    });
+
+    it('should throw AppError when S3 delete fails', async () => {
+      mockSend
+        .mockResolvedValueOnce({}) // HeadObjectCommand succeeds
+        .mockRejectedValueOnce(new Error('Delete failed')); // DeleteObjectCommand fails
+
+      await expect(service.deleteImage(fileKey)).rejects.toThrow(AppError);
+
+      mockSend.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('Delete failed'));
+
+      await expect(service.deleteImage(fileKey)).rejects.toMatchObject({
+        error: expect.objectContaining({
           message: "Can't delete image",
+        }),
+      });
+    });
+
+    it('should throw AppError.badRequest for invalid file key', async () => {
+      await expect(service.deleteImage('../secret')).rejects.toThrow(AppError);
+      await expect(service.deleteImage('../secret')).rejects.toMatchObject({
+        error: expect.objectContaining({
+          message: 'Invalid file key',
         }),
       });
     });
